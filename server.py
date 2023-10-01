@@ -13,20 +13,23 @@ async def connect(ws):
         async for msg in ws:
             print(msg)
             await ws.send(msg)
+    except websockets.exceptions.ConnectionClosedOK:
+        print('connection closed.')
     finally:
         connected.remove(ws)
         print('disconnected')
 
 async def send_to_clients(msg):
-    # global connected
-    # for ws in connected:
-    #     await ws.send(msg)
-    print(f'broadcasting: {msg}')
-    await websockets.broadcast(connected, f'relayed: {msg}')
+    global connected
+    for ws in connected:
+        await ws.send(msg)
+    print(f'broadcasting to {len(connected)} clients: {msg}')
+    # websockets.broadcast(connected, f'relayed: {msg}')
 
 async def server_main():
     async with serve(connect, "localhost", 8764):
         try:
+
             await asyncio.Future()
         except asyncio.CancelledError:
             print ('canceled')

@@ -1,29 +1,50 @@
 import asyncio
-import socket
+from websockets.server import serve
 import websockets
 
-async def run_server(host='127.0.0.1', port=55555):
-    sock = socket.socket()
-    sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    sock.bind((host, port))
-    sock.listen()
-    while True:
-        client_sock, addr = await sock.accept()
-        print('Connection from', addr)
-        await handle_client(client_sock)
+connected = set()
 
 
-async def handle_client(sock):
-    while True:
-        received_data = await sock.recv(4096)
-        if not received_data:
-            break
-        await sock.sendall(received_data)
+async def connect(ws):
+    global connected
+    try:
+        connected.add(ws)
+        print('connected')
+        async for msg in ws:
+            print(msg)
+            await ws.send(msg)
+    finally:
+        connected.remove(ws)
+        print('disconnected')
 
-    print('Client disconnected:', sock.getpeername())
-    sock.close()
+async def send_to_clients(msg):
+    # global connected
+    # for ws in connected:
+    #     await ws.send(msg)
+    print(f'broadcasting: {msg}')
+    await websockets.broadcast(connected, f'relayed: {msg}')
 
+async def server_main():
+    async with serve(connect, "localhost", 8764):
+        try:
+            await asyncio.Future()
+        except asyncio.CancelledError:
+            print ('canceled')
+            return
 
+async def client_main():
+    async with websockets.connect('ws://localhost:8765') as ws:
+        async for msg in ws:
+            await send_to_clients(msg)
+
+async def main():
+    await asyncio.gather(
+        server_main(),
+        client_main()
+    )
 
 if __name__ == '__main__':
-    asyncio.run(run_server())
+    try:
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        print('bye!')

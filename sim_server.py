@@ -1,13 +1,23 @@
 import asyncio
 from websockets.server import serve
 
-async def hello(ws):
-    async for message in ws:
-        print (f'echo: {message}')
-        await ws.send(message)
+connected = set()
 
-async def run_server():
-    async with serve(hello, "localhost", 8765):
+count = 0
+async def connect(ws):
+    global connected, count
+    try:
+        connected.add(ws)
+        print('connected')
+        while True:
+            await ws.send(f'count: {count}')
+            await asyncio.sleep(1)
+    finally:
+        connected.remove(ws)
+        print('disconnected')
+
+async def main():
+    async with serve(connect, "localhost", 8765):
         try:
             await asyncio.Future()
         except asyncio.CancelledError:
@@ -16,7 +26,7 @@ async def run_server():
  
 if __name__ == '__main__':
     try:
-        asyncio.run(run_server())
+        asyncio.run(main())
     except KeyboardInterrupt:
         print('bye!')
  

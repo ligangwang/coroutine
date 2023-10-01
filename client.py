@@ -3,11 +3,15 @@ import datetime
 
 import asyncio
 from websockets.sync.client import connect
+import websockets
 
-def hello():
-    with connect("ws://localhost:8765") as websocket:
-        websocket.send("Hello world!")
-        message = websocket.recv()
-        print(f"Received: {message}")
+async def main():
+    async with websockets.connect("ws://localhost:8764") as ws:
+        async for msg in ws:
+            print(msg)
 
-hello()
+if __name__ == '__main__':
+    try:
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        print('bye!')

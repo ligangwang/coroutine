@@ -44,7 +44,7 @@ CREATE TABLE msg_out (timestamp datetime DEFAULT(STRFTIME('%Y-%m-%d %H:%M:%f', '
 CREATE TABLE msg_latest (source char(4), timestamp datetime DEFAULT(STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), message varchar(10))
 """], None)
 
-def init():
+def init_db():
     global file_path
     if not os.path.exists(file_path):
         create_db()
@@ -62,7 +62,16 @@ def update_latest_messages(messages):
     _execute_many("UPDATE msg_latest timestamp = STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW'), messaeg = ? WHERE oid = ?", data)
 
 def get_in_messages():
-    return _query("SELECT STRFTIME('%Y-%m-%d %H:%M:%f', timestamp), message FROM msg_in", ())
+    return _query("SELECT STRFTIME('%Y-%m-%d %H:%M:%f', timestamp) AS timestamp, message FROM msg_in", ())
 
 def get_latest_messages():
-    return _query("SELECT STRFTIME('%Y-%m-%d %H:%M:%f', timestamp), message FROM msg_latest")
+    return _query("SELECT STRFTIME('%Y-%m-%d %H:%M:%f', timestamp) AS timestamp, message FROM msg_latest", ())
+
+
+if __name__ == '__main__':
+    init_db()
+    #save_in_messages('test', ['msg1', 'msg2',  'msg3'])
+    # save_latest_messages('test', ['1', '2', '3'])
+    # update_latest_messages(['1', '2', '3'])
+    print(get_in_messages())
+    print(get_latest_messages())

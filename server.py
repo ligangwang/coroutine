@@ -3,10 +3,10 @@ from websockets.server import serve
 import websockets
 from concurrent.futures import ProcessPoolExecutor
 from service import on_msg_recv
+from datastore import init_db
 
 connected = set()
 executor = ProcessPoolExecutor()
-loop = asyncio.get_event_loop()
 
 async def connect(ws):
     global connected
@@ -31,7 +31,8 @@ async def send_to_clients(msg):
 
 async def receive_from_market(msg):
     global executor
-    await loop.run_in_executor(executor, on_msg_recv, msg)
+    loop = asyncio.get_running_loop()
+    return await loop.run_in_executor(executor, on_msg_recv, msg)
 
 async def server_main():
     async with serve(connect, "localhost", 8764):
@@ -41,27 +42,33 @@ async def server_main():
             print ('canceled')
             return
 
+reconnect_interval = 1
+
 async def market_main():
-    async for ws in websockets.connect('ws://localhost:8765'):
-        try:
+    global reconnect_interval
+    print('connecting to market...')
+    try:    
+        async with websockets.connect('ws://localhost:8765') as ws:
             async for msg in ws:
                 await receive_from_market(msg)
-        except ConnectionRefusedError:# (ConnectionAbortedError, ConnectionRefusedError,ConnectionResetError, ConnectionError):
-            continue
-        except:
-            print('catch call')
+    except asyncio.CancelledError:
+        print('market connection canceled')
+    except ConnectionRefusedError:# (ConnectionAbortedError, ConnectionRefusedError,ConnectionResetError, ConnectionError):
+        print(f"connection refused, retrying in {reconnect_interval} second(s)...")
+        await asyncio.sleep(reconnect_interval)
+        if reconnect_interval < 30:
+            reconnect_interval *= 2
+        await market_main()
 
 async def main():
-    try:
-        await asyncio.gather(
-            server_main(),
-            market_main()
-        )
-    except ConnectionRefusedError:
-        print('market connection failed')
+    await asyncio.gather(
+        server_main(),
+        market_main()
+    )
 
 if __name__ == '__main__':
     try:
+        init_db()    
         asyncio.run(main())
-    except (KeyboardInterrupt, ConnectionRefusedError):
+    except KeyboardInterrupt:
         print('bye!')

@@ -9,16 +9,16 @@ async def connect(ws):
     global connected, count
     try:
         connected.add(ws)
-        print('sim connected')
+        print('client connected')
         while True:
             await ws.send(f'count: {count}')
             count += 1
             await asyncio.sleep(1)
     except websockets.exceptions.ConnectionClosedOK:
-        print('sim connection closed.')
+        print('client connection closed.')
     finally:
         connected.remove(ws)
-        print('sim disconnected')
+        print('client disconnected')
 
 async def main():
     async with serve(connect, "localhost", 8765):
